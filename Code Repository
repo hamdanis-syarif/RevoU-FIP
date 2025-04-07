@@ -1,0 +1,150 @@
+SELECT 
+  customer_id,
+  REGEXP_REPLACE(customer_id, r'[^a-zA-Z0-9]', '') AS cleaned_customer_id
+FROM `next-porto.finance_insight_project.customer`;
+===================
+SELECT 
+  customer_id,
+  REGEXP_REPLACE(customer_id, r'[^a-zA-Z0-9]', '') AS cleaned_customer_id
+FROM `next-porto.finance_insight_project.loan`;
+===================
+WITH cleaned_loan AS (
+  SELECT
+    *,
+    REGEXP_REPLACE(customer_id, r'[^a-zA-Z0-9]', '') AS cleaned_customer_id
+  FROM
+    `next-porto.finance_insight_project.loan`
+),
+
+cleaned_customer AS (
+  SELECT
+    *,
+    REGEXP_REPLACE(customer_id, r'[^a-zA-Z0-9]', '') AS cleaned_customer_id
+  FROM
+    `next-porto.finance_insight_project.customer`
+),
+
+joined_data AS (
+  SELECT
+    l.loan_id,
+    l.cleaned_customer_id,
+    l.funded_amount,
+    l.loan_status,
+    c.annual_inc,
+    c.zip_code
+  FROM
+    cleaned_loan l
+  JOIN
+    cleaned_customer c
+  ON
+    l.cleaned_customer_id = c.cleaned_customer_id
+),
+
+calculated_metrics AS (
+  SELECT
+    COUNT(DISTINCT cleaned_customer_id) AS total_customers,
+    SUM(funded_amount) AS os_total,
+    SUM(CASE WHEN loan_status != 'Default' THEN funded_amount ELSE 0 END) AS enr,
+    SUM(CASE WHEN loan_status = 'Late (31-120 days)' THEN funded_amount ELSE 0 END) AS os_dpd30
+  FROM
+    joined_data
+)
+
+SELECT
+  total_customers,
+  os_total,
+  enr,
+  ROUND(1 - (os_dpd30 / os_total), 4) AS tkb30
+FROM
+  calculated_metrics;
+==============================
+WITH cleaned_loan AS (
+  SELECT
+    *,
+    REGEXP_REPLACE(customer_id, r'[^a-zA-Z0-9]', '') AS cleaned_customer_id
+  FROM
+    `next-porto.finance_insight_project.loan`
+),
+
+cleaned_customer AS (
+  SELECT
+    *,
+    REGEXP_REPLACE(customer_id, r'[^a-zA-Z0-9]', '') AS cleaned_customer_id
+  FROM
+    `next-porto.finance_insight_project.customer`
+),
+
+joined_data AS (
+  SELECT
+    l.loan_id,
+    l.cleaned_customer_id,
+    l.funded_amount,
+    l.loan_status,
+    l.issue_year,
+    c.annual_inc,
+    c.zip_code
+  FROM
+    cleaned_loan l
+  JOIN
+    cleaned_customer c
+  ON
+    l.cleaned_customer_id = c.cleaned_customer_id
+),
+
+calculated_metrics AS (
+  SELECT
+    PARSE_DATE('%Y-%m-%d', CAST(CAST(issue_year AS INT64) AS STRING) || '-01-01') AS issue_date,
+    COUNT(DISTINCT cleaned_customer_id) AS total_customers,
+    SUM(funded_amount) AS os_total,
+    SUM(CASE WHEN loan_status != 'Default' THEN funded_amount ELSE 0 END) AS enr,
+    SUM(CASE WHEN loan_status = 'Late (31-120 days)' THEN funded_amount ELSE 0 END) AS os_dpd30
+  FROM
+    joined_data
+  GROUP BY
+    issue_year
+)
+
+SELECT
+  issue_date,
+  total_customers,
+  os_total,
+  enr,
+  ROUND(1 - (os_dpd30 / os_total), 4) AS tkb30
+FROM
+  calculated_metrics
+ORDER BY
+  issue_date;
+==========================
+WITH cleaned_loan AS (
+  SELECT
+    *,
+    REGEXP_REPLACE(customer_id, r'[^a-zA-Z0-9]', '') AS cleaned_customer_id
+  FROM
+    `next-porto.finance_insight_project.loan`
+),
+
+cleaned_customer AS (
+  SELECT
+    *,
+    REGEXP_REPLACE(customer_id, r'[^a-zA-Z0-9]', '') AS cleaned_customer_id
+  FROM
+    `next-porto.finance_insight_project.customer`
+)
+
+  SELECT
+  l.loan_id,
+  l.cleaned_customer_id,
+  c.home_ownership,
+  c.annual_inc,
+  c.emp_length,
+  c.addr_state,
+  l.purpose,
+  l.issue_date
+  FROM
+    cleaned_loan l
+  JOIN
+    cleaned_customer c
+  ON
+    l.cleaned_customer_id = c.cleaned_customer_id
+  ORDER BY
+    l.issue_date
