@@ -1,0 +1,23 @@
+SELECT
+  sr.subregion,
+  sr.state,
+  COUNT(l.loan_id) AS cnt_loan_id
+FROM
+  `next-porto.finance_insight_project.loan` l
+JOIN
+  `next-porto.finance_insight_project.loan_with_region` lr
+ON
+  l.loan_id = lr.loan_id
+JOIN
+  `next-porto.finance_insight_project.state_region` sr
+ON
+  lr.region = sr.region
+WHERE
+  EXTRACT(YEAR FROM PARSE_DATE('%B %Y', l.issue_date)) IN (2016, 2017)
+  AND sr.subregion IN ("East South Central", "South Atlantic", "West South Central")
+GROUP BY
+  sr.subregion,
+  sr.state
+ORDER BY
+  cnt_loan_id DESC
+=================
